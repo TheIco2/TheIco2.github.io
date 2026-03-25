@@ -1100,6 +1100,343 @@ body:hover .cursor-glow {
 }
 
 /* ============================================
+   Page Load Intro Overlay
+   ============================================ */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+
+.intro-overlay.done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.intro-terminal {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.intro-line {
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.intro-line.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.intro-line .accent-green {
+  color: var(--accent-2);
+}
+
+.intro-line .accent-purple {
+  color: var(--accent-1);
+  font-weight: 700;
+}
+
+.intro-dots {
+  animation: blink-dots 1s steps(3) infinite;
+}
+
+@keyframes blink-dots {
+  0% { content: '.'; }
+  33% { content: '..'; }
+  66% { content: '...'; }
+}
+
+/* ============================================
+   Custom Cursor (Dot + Ring)
+   ============================================ */
+.cursor-dot {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-1);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 100001;
+  transform: translate(-50%, -50%);
+  transition: width 0.2s var(--ease-spring), height 0.2s var(--ease-spring),
+              background 0.2s ease, opacity 0.3s ease;
+  mix-blend-mode: difference;
+}
+
+.cursor-ring {
+  position: fixed;
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid rgba(108, 99, 255, 0.5);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 100000;
+  transform: translate(-50%, -50%);
+  transition: width 0.35s var(--ease-spring), height 0.35s var(--ease-spring),
+              border-color 0.2s ease, opacity 0.3s ease;
+}
+
+/* Hover states for cursor */
+.cursor-dot.hovering {
+  width: 12px;
+  height: 12px;
+  background: var(--accent-2);
+}
+
+.cursor-ring.hovering {
+  width: 52px;
+  height: 52px;
+  border-color: rgba(0, 212, 170, 0.5);
+}
+
+.cursor-dot.clicking {
+  width: 4px;
+  height: 4px;
+}
+
+.cursor-ring.clicking {
+  width: 28px;
+  height: 28px;
+}
+
+/* Hide on touch devices */
+@media (hover: none) {
+  .cursor-dot,
+  .cursor-ring {
+    display: none;
+  }
+}
+
+/* ============================================
+   Mouse Trail Canvas
+   ============================================ */
+.trail-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ============================================
+   Rotating Words (Hero)
+   ============================================ */
+.rotating-words {
+  position: relative;
+  display: inline-block;
+  min-height: 1.1em;
+  vertical-align: bottom;
+}
+
+.rotating-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(20px) rotateX(-40deg);
+  transition: opacity 0.5s ease, transform 0.5s var(--ease-out);
+  position: absolute;
+  left: 0;
+  white-space: nowrap;
+}
+
+.rotating-word:first-child {
+  position: relative;
+}
+
+.rotating-word.active {
+  opacity: 1;
+  transform: translateY(0) rotateX(0deg);
+}
+
+.rotating-word.exit-up {
+  opacity: 0;
+  transform: translateY(-20px) rotateX(40deg);
+}
+
+/* ============================================
+   Terminal Block
+   ============================================ */
+.terminal-block {
+  margin-top: var(--space-xl);
+  background: #0d0d0f;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--border);
+}
+
+.terminal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.terminal-dot.red { background: #ff5f57; }
+.terminal-dot.yellow { background: #febc2e; }
+.terminal-dot.green { background: #28c840; }
+
+.terminal-title {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.terminal-body {
+  padding: 14px;
+  line-height: 1.8;
+}
+
+.terminal-line {
+  white-space: nowrap;
+}
+
+.terminal-prompt {
+  color: var(--accent-2);
+  font-weight: 700;
+}
+
+.terminal-cmd {
+  color: var(--text-primary);
+}
+
+.terminal-output {
+  color: var(--text-tertiary);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.terminal-output.typed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.terminal-success {
+  color: var(--accent-2);
+}
+
+/* ============================================
+   Section Reveal Animations
+   ============================================ */
+[data-reveal] {
+  opacity: 0;
+  transition: opacity 1s var(--ease-out), transform 1s var(--ease-out);
+}
+
+[data-reveal="left"] {
+  transform: translateX(-60px);
+}
+
+[data-reveal="right"] {
+  transform: translateX(60px);
+}
+
+[data-reveal="scale"] {
+  transform: scale(0.92);
+}
+
+[data-reveal="up"] {
+  transform: translateY(60px);
+}
+
+[data-reveal].revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* ============================================
+   Scroll Velocity Skew
+   ============================================ */
+.velocity-skew {
+  will-change: transform;
+  transition: transform 0.1s linear;
+}
+
+/* ============================================
+   Project Card CRT Glitch
+   ============================================ */
+.project-card {
+  position: relative;
+}
+
+.project-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(108, 99, 255, 0.03) 2px,
+    rgba(108, 99, 255, 0.03) 4px
+  );
+  transition: opacity 0.3s ease;
+  border-radius: var(--radius-lg);
+}
+
+.project-card:hover::before {
+  opacity: 1;
+}
+
+.project-card.glitch-active {
+  animation: card-glitch 0.3s steps(2) forwards;
+}
+
+@keyframes card-glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 1px); filter: hue-rotate(20deg); }
+  40% { transform: translate(2px, -1px); filter: hue-rotate(-20deg); }
+  60% { transform: translate(-1px, -1px); filter: hue-rotate(10deg); }
+  80% { transform: translate(1px, 2px); }
+  100% { transform: translateY(-4px); filter: none; }
+}
+
+/* ============================================
+   Stat Hover Glow
+   ============================================ */
+.stat {
+  transition: border-color var(--duration-normal) ease,
+              box-shadow var(--duration-normal) ease;
+}
+
+.stat:hover {
+  border-color: var(--accent-1);
+  box-shadow: -4px 0 20px rgba(108, 99, 255, 0.1);
+}
+
+/* ============================================
+   Social Link Glow
+   ============================================ */
+.social-link:hover {
+  box-shadow: 0 0 20px rgba(108, 99, 255, 0.15);
+}
+
+/* ============================================
    Social Link Glow on Hover
    ============================================ */
 .social-link:hover {

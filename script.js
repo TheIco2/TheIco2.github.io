@@ -5,6 +5,83 @@
 (function () {
   'use strict';
 
+  // ========================================
+  // Page Load Intro Sequence
+  // ========================================
+  const introOverlay = document.getElementById('introOverlay');
+  const introLines = introOverlay.querySelectorAll('.intro-line');
+  let introDelay = 0;
+
+  introLines.forEach((line) => {
+    const d = parseInt(line.getAttribute('data-delay'), 10) || 0;
+    setTimeout(() => line.classList.add('show'), d);
+    introDelay = Math.max(introDelay, d);
+  });
+
+  // Dismiss intro after last line + pause
+  setTimeout(() => {
+    introOverlay.classList.add('done');
+    document.body.classList.add('loaded');
+  }, introDelay + 1000);
+
+  // ========================================
+  // Custom Cursor (Dot + Ring)
+  // ========================================
+  const cursorDot = document.getElementById('cursorDot');
+  const cursorRing = document.getElementById('cursorRing');
+  let dotX = 0, dotY = 0, ringX = 0, ringY = 0;
+
+  document.addEventListener('mousemove', (e) => {
+    dotX = e.clientX;
+    dotY = e.clientY;
+  });
+
+  function animateCursor() {
+    ringX += (dotX - ringX) * 0.12;
+    ringY += (dotY - ringY) * 0.12;
+
+    cursorDot.style.left = dotX + 'px';
+    cursorDot.style.top = dotY + 'px';
+    cursorRing.style.left = ringX + 'px';
+    cursorRing.style.top = ringY + 'px';
+
+    requestAnimationFrame(animateCursor);
+  }
+
+  if (window.matchMedia('(hover: hover)').matches) {
+    animateCursor();
+
+    // Hover detection for interactive elements
+    const hoverTargets = 'a, button, [data-magnetic], .project-card, .skill-item, .social-link, .nav-toggle';
+
+    document.addEventListener('mouseover', (e) => {
+      if (e.target.closest(hoverTargets)) {
+        cursorDot.classList.add('hovering');
+        cursorRing.classList.add('hovering');
+      }
+    });
+
+    document.addEventListener('mouseout', (e) => {
+      if (e.target.closest(hoverTargets)) {
+        cursorDot.classList.remove('hovering');
+        cursorRing.classList.remove('hovering');
+      }
+    });
+
+    document.addEventListener('mousedown', () => {
+      cursorDot.classList.add('clicking');
+      cursorRing.classList.add('clicking');
+    });
+
+    document.addEventListener('mouseup', () => {
+      cursorDot.classList.remove('clicking');
+      cursorRing.classList.remove('clicking');
+    });
+  } else {
+    cursorDot.style.display = 'none';
+    cursorRing.style.display = 'none';
+  }
+
   // ----------------------------------------
   // Cursor Glow (smooth follow)
   // ----------------------------------------
@@ -25,6 +102,54 @@
     requestAnimationFrame(animateGlow);
   }
   animateGlow();
+
+  // ========================================
+  // Mouse Trail (glowing particles)
+  // ========================================
+  const trailCanvas = document.getElementById('trailCanvas');
+  const tCtx = trailCanvas.getContext('2d');
+  const trailPoints = [];
+  const MAX_TRAIL = 30;
+
+  function resizeTrail() {
+    trailCanvas.width = window.innerWidth;
+    trailCanvas.height = window.innerHeight;
+  }
+  resizeTrail();
+  window.addEventListener('resize', resizeTrail);
+
+  document.addEventListener('mousemove', (e) => {
+    trailPoints.push({ x: e.clientX, y: e.clientY, life: 1 });
+    if (trailPoints.length > MAX_TRAIL) trailPoints.shift();
+  });
+
+  function drawTrail() {
+    tCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+
+    for (let i = trailPoints.length - 1; i >= 0; i--) {
+      const p = trailPoints[i];
+      p.life -= 0.025;
+      if (p.life <= 0) {
+        trailPoints.splice(i, 1);
+        continue;
+      }
+      const size = p.life * 3;
+      const alpha = p.life * 0.4;
+      tCtx.beginPath();
+      tCtx.arc(p.x, p.y, size, 0, Math.PI * 2);
+      tCtx.fillStyle = 'rgba(108, 99, 255, ' + alpha + ')';
+      tCtx.fill();
+
+      // Glow ring
+      tCtx.beginPath();
+      tCtx.arc(p.x, p.y, size * 2.5, 0, Math.PI * 2);
+      tCtx.fillStyle = 'rgba(108, 99, 255, ' + (alpha * 0.15) + ')';
+      tCtx.fill();
+    }
+
+    requestAnimationFrame(drawTrail);
+  }
+  drawTrail();
 
   // ----------------------------------------
   // Scroll Progress Bar
@@ -186,48 +311,30 @@
   drawParticles();
   window.addEventListener('resize', () => { resizeCanvas(); createParticles(); });
 
-  // ----------------------------------------
-  // Text Scramble Effect
-  // ----------------------------------------
-  const scrambleChars = '!<>-_\\/[]{}—=+*^?#_ABCDEFGHIJKLMNOPQRSTZabcdefghijklmnopqrstz0123456789';
+  // ========================================
+  // Rotating Words (Hero)
+  // ========================================
+  const rotatingContainer = document.getElementById('rotatingWords');
+  if (rotatingContainer) {
+    const words = rotatingContainer.querySelectorAll('.rotating-word');
+    let currentWord = 0;
+    const WORD_INTERVAL = 3000;
 
-  function scrambleText(el) {
-    const original = el.textContent;
-    const length = original.length;
-    let iteration = 0;
-    const maxIterations = length * 3;
-    let frame;
+    setInterval(() => {
+      const prev = words[currentWord];
+      prev.classList.remove('active');
+      prev.classList.add('exit-up');
 
-    function update() {
-      let result = '';
-      for (let i = 0; i < length; i++) {
-        if (original[i] === ' ') {
-          result += ' ';
-        } else if (i < iteration / 3) {
-          result += original[i];
-        } else {
-          result += scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
-        }
-      }
-      el.textContent = result;
-      iteration++;
+      currentWord = (currentWord + 1) % words.length;
+      const next = words[currentWord];
 
-      if (iteration < maxIterations) {
-        frame = requestAnimationFrame(update);
-      } else {
-        el.textContent = original;
-      }
-    }
-
-    // Small delay so user sees the scramble start
-    setTimeout(() => { frame = requestAnimationFrame(update); }, 600);
+      // Small delay so exit plays before enter
+      setTimeout(() => {
+        prev.classList.remove('exit-up');
+        next.classList.add('active');
+      }, 300);
+    }, WORD_INTERVAL);
   }
-
-  document.querySelectorAll('[data-scramble]').forEach((el) => {
-    const orig = el.textContent;
-    el.dataset.originalText = orig;
-    scrambleText(el);
-  });
 
   // ----------------------------------------
   // Scroll-triggered animations
@@ -250,6 +357,74 @@
   );
 
   animatedElements.forEach((el) => observer.observe(el));
+
+  // ========================================
+  // Section Reveal Animations (varied)
+  // ========================================
+  const revealSections = document.querySelectorAll('[data-reveal]');
+
+  const revealObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.08, rootMargin: '0px 0px -60px 0px' }
+  );
+
+  revealSections.forEach((el) => revealObserver.observe(el));
+
+  // ========================================
+  // Terminal Typing Animation
+  // ========================================
+  const terminalBody = document.getElementById('terminalBody');
+  if (terminalBody) {
+    const outputs = terminalBody.querySelectorAll('.terminal-output');
+
+    const terminalObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            outputs.forEach((line) => {
+              const delay = parseInt(line.getAttribute('data-delay'), 10) || 0;
+              setTimeout(() => line.classList.add('typed'), delay);
+            });
+            terminalObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    terminalObserver.observe(terminalBody);
+  }
+
+  // ========================================
+  // Scroll Velocity Skew
+  // ========================================
+  let lastScrollY = window.scrollY;
+  let scrollVelocity = 0;
+  let velocityFrame;
+  const skewTargets = document.querySelectorAll('.section-title, .project-title, .contact-title');
+
+  function updateVelocitySkew() {
+    const currentScrollY = window.scrollY;
+    const rawVelocity = currentScrollY - lastScrollY;
+    scrollVelocity += (rawVelocity - scrollVelocity) * 0.15;
+    lastScrollY = currentScrollY;
+
+    const skew = Math.max(-3, Math.min(3, scrollVelocity * 0.15));
+
+    skewTargets.forEach((el) => {
+      el.style.transform = 'skewY(' + skew + 'deg)';
+    });
+
+    velocityFrame = requestAnimationFrame(updateVelocitySkew);
+  }
+  updateVelocitySkew();
 
   // ----------------------------------------
   // Animated number counters
@@ -385,10 +560,15 @@
   window.addEventListener('scroll', handleParallax, { passive: true });
 
   // ----------------------------------------
-  // Tilt on project cards (desktop only)
+  // Tilt + Spotlight + CRT Glitch on cards
   // ----------------------------------------
   if (window.matchMedia('(hover: hover)').matches) {
     document.querySelectorAll('.project-card').forEach((card) => {
+      card.addEventListener('mouseenter', () => {
+        card.classList.add('glitch-active');
+        setTimeout(() => card.classList.remove('glitch-active'), 300);
+      });
+
       card.addEventListener('mousemove', (e) => {
         const rect = card.getBoundingClientRect();
         const x = e.clientX - rect.left;

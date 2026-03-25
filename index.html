@@ -10,6 +10,23 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 </head>
 <body>
+  <!-- Page load intro -->
+  <div class="intro-overlay" id="introOverlay">
+    <div class="intro-terminal">
+      <span class="intro-line" data-delay="0">> initializing portfolio...</span>
+      <span class="intro-line" data-delay="400">> loading modules <span class="intro-dots">...</span></span>
+      <span class="intro-line" data-delay="800">> compiling shaders <span class="accent-green">✓</span></span>
+      <span class="intro-line" data-delay="1200">> <span class="accent-purple">ready.</span></span>
+    </div>
+  </div>
+
+  <!-- Custom cursor -->
+  <div class="cursor-dot" id="cursorDot"></div>
+  <div class="cursor-ring" id="cursorRing"></div>
+
+  <!-- Mouse trail canvas -->
+  <canvas class="trail-canvas" id="trailCanvas"></canvas>
+
   <!-- Cursor glow effect -->
   <div class="cursor-glow" id="cursorGlow"></div>
 
@@ -52,7 +69,12 @@
       </div>
       <h1 class="hero-title" data-animate>
         <span class="hero-line">I build systems</span>
-        <span class="hero-line gradient-text" data-scramble>from scratch.</span>
+        <span class="hero-line gradient-text rotating-words" id="rotatingWords">
+          <span class="rotating-word active">from scratch.</span>
+          <span class="rotating-word">at the metal.</span>
+          <span class="rotating-word">the hard way.</span>
+          <span class="rotating-word">in Rust.</span>
+        </span>
       </h1>
       <p class="hero-description" data-animate>
         A Rust developer focused on GPU rendering, desktop platforms, and
@@ -88,7 +110,7 @@
   </section>
 
   <!-- About Section -->
-  <section class="section" id="about">
+  <section class="section" id="about" data-reveal="left">
     <div class="container">
       <div class="section-header" data-animate>
         <span class="section-tag">01 / About</span>
@@ -107,6 +129,22 @@
             Win32 interop, IPC protocols, and USB reverse-engineering. If there's
             a library for it, I've probably tried building my own instead.
           </p>
+          <!-- Terminal block -->
+          <div class="terminal-block" data-animate>
+            <div class="terminal-header">
+              <span class="terminal-dot red"></span>
+              <span class="terminal-dot yellow"></span>
+              <span class="terminal-dot green"></span>
+              <span class="terminal-title">~/projects/canvasx</span>
+            </div>
+            <div class="terminal-body" id="terminalBody">
+              <div class="terminal-line"><span class="terminal-prompt">$</span> <span class="terminal-cmd" data-type="cargo build --release">cargo build --release</span></div>
+              <div class="terminal-line terminal-output" data-delay="600">   Compiling canvasx v0.1.0</div>
+              <div class="terminal-line terminal-output" data-delay="1200">   Compiling wgpu-renderer v0.3.2</div>
+              <div class="terminal-line terminal-output" data-delay="1800">   Compiling sdf-pipeline v0.2.0</div>
+              <div class="terminal-line terminal-output terminal-success" data-delay="2400">    Finished release [optimized] target(s) in 24.7s</div>
+            </div>
+          </div>
         </div>
         <div class="about-stats" data-animate>
           <div class="stat">
@@ -127,7 +165,7 @@
   </section>
 
   <!-- Work Section -->
-  <section class="section section-dark" id="work">
+  <section class="section section-dark" id="work" data-reveal="right">
     <div class="container">
       <div class="section-header" data-animate>
         <span class="section-tag">02 / Work</span>
@@ -211,7 +249,7 @@
   </section>
 
   <!-- Skills Section -->
-  <section class="section" id="skills">
+  <section class="section" id="skills" data-reveal="scale">
     <div class="container">
       <div class="section-header" data-animate>
         <span class="section-tag">03 / Skills</span>
@@ -275,7 +313,7 @@
   </section>
 
   <!-- Contact Section -->
-  <section class="section section-dark" id="contact">
+  <section class="section section-dark" id="contact" data-reveal="up">
     <div class="container">
       <div class="contact-content" data-animate>
         <span class="section-tag">04 / Contact</span>
