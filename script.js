@@ -729,4 +729,144 @@
     });
   }
 
+  // ========================================
+  // GitHub Stats (public API, no auth)
+  // ========================================
+  const GH_USER = 'TheIco2';
+  const LANG_COLORS = {
+    Rust: '#dea584',
+    JavaScript: '#f1e05a',
+    HTML: '#e34c26',
+    CSS: '#563d7c',
+    TypeScript: '#3178c6',
+    Python: '#3572a5',
+    Shell: '#89e051',
+    PowerShell: '#012456',
+    WGSL: '#6c63ff',
+  };
+
+  async function fetchGitHubStats() {
+    try {
+      const [userRes, reposRes] = await Promise.all([
+        fetch('https://api.github.com/users/' + GH_USER),
+        fetch('https://api.github.com/users/' + GH_USER + '/repos?per_page=100&sort=updated'),
+      ]);
+
+      if (!userRes.ok || !reposRes.ok) return;
+
+      const user = await userRes.json();
+      const repos = await reposRes.json();
+
+      // Total stars
+      const totalStars = repos.reduce(function (sum, r) {
+        return sum + (r.stargazers_count || 0);
+      }, 0);
+
+      // Language byte counts across repos
+      const langTotals = {};
+      repos.forEach(function (r) {
+        if (r.language) {
+          langTotals[r.language] = (langTotals[r.language] || 0) + (r.size || 0);
+        }
+      });
+
+      // Sort languages by size
+      const sortedLangs = Object.entries(langTotals)
+        .sort(function (a, b) { return b[1] - a[1]; });
+
+      const topLang = sortedLangs.length > 0 ? sortedLangs[0][0] : '—';
+
+      // Animate stat values
+      animateGHStat('ghRepos', user.public_repos || 0);
+      animateGHStat('ghStars', totalStars);
+      animateGHStat('ghFollowers', user.followers || 0);
+      document.getElementById('ghLang').textContent = topLang;
+
+      // Draw language bar
+      renderLangBar(sortedLangs);
+    } catch (e) {
+      // Silently fail — stats just stay as dashes
+    }
+  }
+
+  function animateGHStat(id, target) {
+    const el = document.getElementById(id);
+    if (!el || target === 0) {
+      if (el) el.textContent = '0';
+      return;
+    }
+    const duration = 1200;
+    const start = performance.now();
+
+    function tick(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(eased * target);
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  function renderLangBar(sortedLangs) {
+    const container = document.getElementById('githubLangs');
+    if (!container || sortedLangs.length === 0) return;
+
+    const total = sortedLangs.reduce(function (s, l) { return s + l[1]; }, 0);
+    // Take top 6 languages
+    const topLangs = sortedLangs.slice(0, 6);
+
+    // Bar
+    topLangs.forEach(function (entry) {
+      var lang = entry[0];
+      var size = entry[1];
+      var pct = (size / total) * 100;
+      var bar = document.createElement('div');
+      bar.className = 'lang-bar';
+      bar.style.flexGrow = '0';
+      bar.style.background = LANG_COLORS[lang] || '#8b8b95';
+      bar.title = lang + ' — ' + pct.toFixed(1) + '%';
+      container.appendChild(bar);
+
+      // Animate flex-grow after a tick
+      requestAnimationFrame(function () {
+        bar.style.flexGrow = String(pct);
+      });
+    });
+
+    // Legend
+    var legend = document.createElement('div');
+    legend.className = 'github-langs-legend';
+    topLangs.forEach(function (entry) {
+      var lang = entry[0];
+      var size = entry[1];
+      var pct = (size / total) * 100;
+      var item = document.createElement('span');
+      item.className = 'lang-legend-item';
+      item.innerHTML =
+        '<span class="lang-dot" style="background:' + (LANG_COLORS[lang] || '#8b8b95') + '"></span>' +
+        lang + ' <span style="color:var(--text-tertiary)">' + pct.toFixed(1) + '%</span>';
+      legend.appendChild(item);
+    });
+    container.parentElement.appendChild(legend);
+  }
+
+  // Fetch when stats card scrolls into view
+  var ghStatsEl = document.getElementById('githubStats');
+  if (ghStatsEl) {
+    var ghObserver = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            fetchGitHubStats();
+            ghObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+    ghObserver.observe(ghStatsEl);
+  }
+
 })();
