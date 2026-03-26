@@ -730,6 +730,82 @@
   }
 
   // ========================================
+  // Per-Project Repo Stats
+  // ========================================
+  const REPO_LANG_COLORS = {
+    Rust: '#dea584',
+    JavaScript: '#f1e05a',
+    HTML: '#e34c26',
+    CSS: '#563d7c',
+    TypeScript: '#3178c6',
+    Python: '#3572a5',
+    Shell: '#89e051',
+    PowerShell: '#012456',
+    WGSL: '#6c63ff',
+  };
+
+  function timeAgo(dateStr) {
+    var now = Date.now();
+    var then = new Date(dateStr).getTime();
+    var diff = Math.floor((now - then) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    if (diff < 2592000) return Math.floor(diff / 86400) + 'd ago';
+    if (diff < 31536000) return Math.floor(diff / 2592000) + 'mo ago';
+    return Math.floor(diff / 31536000) + 'y ago';
+  }
+
+  function fetchRepoStats(container) {
+    var repo = container.getAttribute('data-repo');
+    if (!repo) return;
+
+    fetch('https://api.github.com/repos/' + repo)
+      .then(function (res) {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then(function (data) {
+        if (!data) return;
+
+        var starsEl = container.querySelector('[data-stat="stars"]');
+        var forksEl = container.querySelector('[data-stat="forks"]');
+        var langEl = container.querySelector('[data-stat="lang"]');
+        var updatedEl = container.querySelector('[data-stat="updated"]');
+        var langDot = container.querySelector('.repo-lang-dot');
+
+        if (starsEl) starsEl.textContent = data.stargazers_count || 0;
+        if (forksEl) forksEl.textContent = data.forks_count || 0;
+        if (langEl) langEl.textContent = data.language || '—';
+        if (updatedEl) updatedEl.textContent = timeAgo(data.pushed_at || data.updated_at);
+        if (langDot && data.language && REPO_LANG_COLORS[data.language]) {
+          langDot.style.background = REPO_LANG_COLORS[data.language];
+        }
+      })
+      .catch(function () {
+        // Silently fail — stats stay as dashes
+      });
+  }
+
+  // Fetch repo stats when work section scrolls into view
+  var workSection = document.getElementById('work');
+  if (workSection) {
+    var repoStatsObserver = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            var statContainers = workSection.querySelectorAll('.project-repo-stats[data-repo]');
+            statContainers.forEach(fetchRepoStats);
+            repoStatsObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+    repoStatsObserver.observe(workSection);
+  }
+
+  // ========================================
   // GitHub Stats (public API, no auth)
   // ========================================
   const GH_USER = 'TheIco2';

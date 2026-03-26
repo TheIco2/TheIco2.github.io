@@ -780,6 +780,53 @@ body:hover .cursor-glow {
 }
 
 /* ============================================
+   Project Repo Stats
+   ============================================ */
+.project-repo-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  padding-top: var(--space-sm);
+}
+
+.repo-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  transition: color var(--duration-fast) ease;
+}
+
+.repo-stat svg {
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.repo-stat:hover {
+  color: var(--text-secondary);
+}
+
+.repo-stat:hover svg {
+  opacity: 1;
+}
+
+.repo-stat-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.repo-lang-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+/* ============================================
    Skills
    ============================================ */
 .skills-grid {
