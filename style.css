@@ -827,6 +827,110 @@ body:hover .cursor-glow {
 }
 
 /* ============================================
+   Work Section Header — Last Activity Pill
+   ============================================ */
+.work-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+}
+
+.work-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0.5rem 0.875rem;
+  border-radius: 100px;
+  background: rgba(0, 212, 170, 0.06);
+  border: 1px solid rgba(0, 212, 170, 0.2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.work-meta-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-2, #00d4aa);
+  box-shadow: 0 0 0 0 rgba(0, 212, 170, 0.6);
+  animation: workPulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes workPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 170, 0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(0, 212, 170, 0);   }
+}
+
+.work-meta.is-error {
+  background: rgba(255, 107, 107, 0.06);
+  border-color: rgba(255, 107, 107, 0.25);
+}
+.work-meta.is-error .work-meta-dot {
+  background: #ff6b6b;
+  animation: none;
+  box-shadow: none;
+}
+
+/* ============================================
+   Project Card — Skeleton Loading
+   ============================================ */
+.project-card-skeleton {
+  min-height: 420px;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.project-card-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 50%,
+    transparent 100%
+  );
+  animation: skeletonShimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes skeletonShimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%);  }
+}
+
+.project-card-skeleton:hover {
+  transform: none;
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+/* Empty state when no repos resolved */
+.projects-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: var(--space-3xl) var(--space-lg);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+}
+
+@media (max-width: 640px) {
+  .work-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* ============================================
    Skills
    ============================================ */
 .skills-grid {

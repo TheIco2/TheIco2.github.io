@@ -756,82 +756,245 @@
     return Math.floor(diff / 31536000) + 'y ago';
   }
 
-  function fetchRepoStats(container) {
-    var repo = container.getAttribute('data-repo');
-    if (!repo) return;
+  // Escape user-supplied strings before injecting into HTML
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
-    fetch('https://api.github.com/repos/' + repo)
-      .then(function (res) {
-        if (!res.ok) return null;
-        return res.json();
-      })
+  // Pick a placeholder icon based on the repo's primary language
+  function iconForLanguage(lang) {
+    switch (lang) {
+      case 'Rust':
+        return '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/><circle cx="12" cy="12" r="3"/></svg>';
+      case 'JavaScript':
+      case 'TypeScript':
+        return '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 10v5a2 2 0 01-2 2M13 10h3a2 2 0 010 4h-1a2 2 0 100 4h3"/></svg>';
+      case 'HTML':
+      case 'CSS':
+        return '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M4 4l1.5 16L12 22l6.5-2L20 4z"/><path d="M8 9h8M8 13h6l-.5 4L12 18l-1.5-1" opacity=".6"/></svg>';
+      case 'Python':
+        return '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M9 3h6a3 3 0 013 3v5H9a3 3 0 00-3 3v4a3 3 0 003 3h6a3 3 0 003-3v-2"/><circle cx="9" cy="6" r="0.5" fill="currentColor"/><circle cx="15" cy="18" r="0.5" fill="currentColor"/></svg>';
+      case 'Shell':
+      case 'PowerShell':
+        return '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M6 9l3 3-3 3M12 15h6"/></svg>';
+      default:
+        return '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
+    }
+  }
+
+  // ========================================
+  // Shared GitHub data fetch (used by Work + GitHub Stats)
+  // ========================================
+  const GH_USER = 'TheIco2';
+  const REPOS_URL =
+    'https://api.github.com/users/' + GH_USER + '/repos?per_page=100&sort=updated';
+  const USER_URL = 'https://api.github.com/users/' + GH_USER;
+
+  let _ghDataPromise = null;
+  function loadGitHubData() {
+    if (_ghDataPromise) return _ghDataPromise;
+    _ghDataPromise = Promise.all([
+      fetch(USER_URL).then(function (r) { return r.ok ? r.json() : null; }),
+      fetch(REPOS_URL).then(function (r) { return r.ok ? r.json() : null; }),
+    ]).then(function (results) {
+      return { user: results[0], repos: Array.isArray(results[1]) ? results[1] : [] };
+    });
+    return _ghDataPromise;
+  }
+
+  // ========================================
+  // Build Project Cards from live repos
+  // ========================================
+  const projectsGrid = document.getElementById('projectsGrid');
+  const workMeta = document.getElementById('workMeta');
+  const workLastUpdate = document.getElementById('workLastUpdate');
+  const MAX_PROJECTS = 6;
+
+  function buildProjectCard(repo, index) {
+    var lang = repo.language || '';
+    var langDot = REPO_LANG_COLORS[lang] || 'var(--text-tertiary)';
+    var accentClass = ['', ' accent-2', ' accent-3'][index % 3];
+
+    // Tags: prefer GitHub topics; fall back to language
+    var tagsArr = (Array.isArray(repo.topics) && repo.topics.length > 0)
+      ? repo.topics.slice(0, 4)
+      : (lang ? [lang] : []);
+    var tagsHtml = tagsArr
+      .map(function (t) { return '<span class="tag">' + escapeHtml(t) + '</span>'; })
+      .join('');
+
+    // Title: prefer the repo's display name (strip dashes/underscores for readability)
+    var prettyTitle = repo.name.replace(/[-_]+/g, ' ');
+    var desc = repo.description || 'No description provided.';
+    var pushed = repo.pushed_at || repo.updated_at;
+    var safeUrl = encodeURI(repo.html_url || ('https://github.com/' + GH_USER));
+
+    var homepage = '';
+    if (repo.homepage && /^https?:\/\//i.test(repo.homepage)) {
+      var safeHome = encodeURI(repo.homepage);
+      homepage =
+        '<a href="' + safeHome + '" target="_blank" rel="noopener noreferrer" class="project-link">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>' +
+          'Live' +
+        '</a>';
+    }
+
+    return (
+      '<article class="project-card" data-animate>' +
+        '<div class="project-image">' +
+          '<div class="project-placeholder' + accentClass + '">' + iconForLanguage(lang) + '</div>' +
+        '</div>' +
+        '<div class="project-info">' +
+          (tagsHtml ? '<div class="project-tags">' + tagsHtml + '</div>' : '') +
+          '<h3 class="project-title">' + escapeHtml(prettyTitle) + '</h3>' +
+          '<p class="project-desc">' + escapeHtml(desc) + '</p>' +
+          '<div class="project-repo-stats">' +
+            '<span class="repo-stat" title="Stars">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ' +
+              '<span class="repo-stat-value">' + (repo.stargazers_count || 0) + '</span>' +
+            '</span>' +
+            '<span class="repo-stat" title="Forks">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v1a2 2 0 01-2 2H8a2 2 0 01-2-2V9M12 12v3"/></svg> ' +
+              '<span class="repo-stat-value">' + (repo.forks_count || 0) + '</span>' +
+            '</span>' +
+            (lang
+              ? '<span class="repo-stat" title="Language">' +
+                  '<span class="repo-lang-dot" style="background:' + langDot + '"></span> ' +
+                  '<span class="repo-stat-value">' + escapeHtml(lang) + '</span>' +
+                '</span>'
+              : '') +
+            (pushed
+              ? '<span class="repo-stat" title="Last push: ' + escapeHtml(new Date(pushed).toLocaleString()) + '">' +
+                  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ' +
+                  '<span class="repo-stat-value">' + escapeHtml(timeAgo(pushed)) + '</span>' +
+                '</span>'
+              : '') +
+          '</div>' +
+          '<div class="project-links">' +
+            '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="project-link">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>' +
+              'Source' +
+            '</a>' +
+            homepage +
+          '</div>' +
+        '</div>' +
+      '</article>'
+    );
+  }
+
+  function renderWorkError(message) {
+    if (workMeta) workMeta.classList.add('is-error');
+    if (workLastUpdate) workLastUpdate.textContent = message;
+    if (projectsGrid) {
+      projectsGrid.innerHTML =
+        '<div class="projects-empty">Could not load repositories from GitHub right now. ' +
+        '<a href="https://github.com/' + GH_USER + '" target="_blank" rel="noopener noreferrer" class="project-link" style="display:inline">Visit profile →</a></div>';
+    }
+  }
+
+  function renderProjects(repos) {
+    if (!projectsGrid) return;
+
+    // Filter: public, non-fork, non-archived, with a description preferred but not required
+    var visible = repos.filter(function (r) {
+      return !r.fork && !r.archived && !r.disabled && !r.private;
+    });
+
+    // Sort by most-recently-pushed first so the page reflects current activity
+    visible.sort(function (a, b) {
+      return new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime();
+    });
+
+    var picked = visible.slice(0, MAX_PROJECTS);
+
+    if (picked.length === 0) {
+      projectsGrid.innerHTML =
+        '<div class="projects-empty">No public repositories to show yet.</div>';
+      if (workLastUpdate) workLastUpdate.textContent = 'No public activity yet';
+      return;
+    }
+
+    projectsGrid.innerHTML = picked
+      .map(function (r, i) { return buildProjectCard(r, i); })
+      .join('');
+
+    // Update last-activity pill using the most recent push across visible repos
+    var mostRecent = picked[0];
+    if (mostRecent && workLastUpdate) {
+      workLastUpdate.textContent =
+        'Last push to ' + mostRecent.name + ' · ' + timeAgo(mostRecent.pushed_at);
+      if (workMeta) {
+        workMeta.title =
+          'Most recent push at ' + new Date(mostRecent.pushed_at).toLocaleString();
+      }
+    }
+
+    // Re-observe newly-added cards for the scroll-in animation
+    var newCards = projectsGrid.querySelectorAll('[data-animate]');
+    newCards.forEach(function (el) { observer.observe(el); });
+
+    // Re-bind hover/tilt effects on the new cards
+    if (window.matchMedia('(hover: hover)').matches) {
+      newCards.forEach(function (card) {
+        card.addEventListener('mouseenter', function () {
+          card.classList.add('glitch-active');
+          setTimeout(function () { card.classList.remove('glitch-active'); }, 300);
+        });
+        card.addEventListener('mousemove', function (e) {
+          var rect = card.getBoundingClientRect();
+          var x = e.clientX - rect.left;
+          var y = e.clientY - rect.top;
+          var rotateX = ((y - rect.height / 2) / (rect.height / 2)) * -4;
+          var rotateY = ((x - rect.width / 2) / (rect.width / 2)) * 4;
+          card.style.transform =
+            'perspective(800px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg) translateY(-4px)';
+          var px = (x / rect.width) * 100;
+          var py = (y / rect.height) * 100;
+          card.style.background =
+            'radial-gradient(circle at ' + px + '% ' + py + '%, rgba(108,99,255,0.06) 0%, var(--bg-card) 60%)';
+        });
+        card.addEventListener('mouseleave', function () {
+          card.style.transform = '';
+          card.style.background = '';
+        });
+      });
+    }
+  }
+
+  // Kick off project loading immediately so the cards are ready by the time
+  // the user scrolls to the work section.
+  if (projectsGrid) {
+    loadGitHubData()
       .then(function (data) {
-        if (!data) return;
-
-        var starsEl = container.querySelector('[data-stat="stars"]');
-        var forksEl = container.querySelector('[data-stat="forks"]');
-        var langEl = container.querySelector('[data-stat="lang"]');
-        var updatedEl = container.querySelector('[data-stat="updated"]');
-        var langDot = container.querySelector('.repo-lang-dot');
-
-        if (starsEl) starsEl.textContent = data.stargazers_count || 0;
-        if (forksEl) forksEl.textContent = data.forks_count || 0;
-        if (langEl) langEl.textContent = data.language || '—';
-        if (updatedEl) updatedEl.textContent = timeAgo(data.pushed_at || data.updated_at);
-        if (langDot && data.language && REPO_LANG_COLORS[data.language]) {
-          langDot.style.background = REPO_LANG_COLORS[data.language];
+        if (!data.repos || data.repos.length === 0) {
+          renderWorkError('GitHub API unavailable');
+          return;
         }
+        renderProjects(data.repos);
       })
       .catch(function () {
-        // Silently fail — stats stay as dashes
+        renderWorkError('GitHub API unavailable');
       });
   }
 
-  // Fetch repo stats when work section scrolls into view
-  var workSection = document.getElementById('work');
-  if (workSection) {
-    var repoStatsObserver = new IntersectionObserver(
-      function (entries) {
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
-            var statContainers = workSection.querySelectorAll('.project-repo-stats[data-repo]');
-            statContainers.forEach(fetchRepoStats);
-            repoStatsObserver.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-    repoStatsObserver.observe(workSection);
-  }
-
   // ========================================
-  // GitHub Stats (public API, no auth)
+  // GitHub Stats (public API, no auth) — reuses shared loadGitHubData()
   // ========================================
-  const GH_USER = 'TheIco2';
-  const LANG_COLORS = {
-    Rust: '#dea584',
-    JavaScript: '#f1e05a',
-    HTML: '#e34c26',
-    CSS: '#563d7c',
-    TypeScript: '#3178c6',
-    Python: '#3572a5',
-    Shell: '#89e051',
-    PowerShell: '#012456',
-    WGSL: '#6c63ff',
-  };
+  const LANG_COLORS = REPO_LANG_COLORS;
 
   async function fetchGitHubStats() {
     try {
-      const [userRes, reposRes] = await Promise.all([
-        fetch('https://api.github.com/users/' + GH_USER),
-        fetch('https://api.github.com/users/' + GH_USER + '/repos?per_page=100&sort=updated'),
-      ]);
+      const data = await loadGitHubData();
+      const user = data.user;
+      const repos = data.repos;
 
-      if (!userRes.ok || !reposRes.ok) return;
-
-      const user = await userRes.json();
-      const repos = await reposRes.json();
+      if (!user || !repos) return;
 
       // Total stars
       const totalStars = repos.reduce(function (sum, r) {
