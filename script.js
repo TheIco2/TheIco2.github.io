@@ -800,8 +800,20 @@
   function loadGitHubData() {
     if (_ghDataPromise) return _ghDataPromise;
     _ghDataPromise = Promise.all([
-      fetch(USER_URL).then(function (r) { return r.ok ? r.json() : null; }),
-      fetch(REPOS_URL).then(function (r) { return r.ok ? r.json() : null; }),
+      fetch(USER_URL).then(function (r) {
+        if (!r.ok) {
+          console.warn('[portfolio] GitHub user fetch failed:', r.status, r.statusText);
+          return null;
+        }
+        return r.json();
+      }),
+      fetch(REPOS_URL).then(function (r) {
+        if (!r.ok) {
+          console.warn('[portfolio] GitHub repos fetch failed:', r.status, r.statusText);
+          return null;
+        }
+        return r.json();
+      }),
     ]).then(function (results) {
       return { user: results[0], repos: Array.isArray(results[1]) ? results[1] : [] };
     });
@@ -973,14 +985,18 @@
     loadGitHubData()
       .then(function (data) {
         if (!data.repos || data.repos.length === 0) {
-          renderWorkError('GitHub API unavailable');
+          console.warn('[portfolio] No repos returned from GitHub (likely rate-limited or network error).');
+          renderWorkError('GitHub API unavailable — try again later');
           return;
         }
         renderProjects(data.repos);
       })
-      .catch(function () {
+      .catch(function (err) {
+        console.error('[portfolio] GitHub data load failed:', err);
         renderWorkError('GitHub API unavailable');
       });
+  } else {
+    console.warn('[portfolio] #projectsGrid not found in DOM — featured projects will not render.');
   }
 
   // ========================================
